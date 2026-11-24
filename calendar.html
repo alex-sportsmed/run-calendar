@@ -108,6 +108,7 @@ details summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:50
 <header>
   <h1>Календарь бега и вело</h1>
   <p class="sub" id="sub">Подключаюсь к базе…</p>
+  <button class="btn" id="exportjson" type="button" style="margin-top:6px;font-size:12px;padding:3px 9px">Экспорт JSON</button>
   <div class="next" id="next"></div>
 </header>
 
@@ -253,6 +254,33 @@ $("detail").append(el("div",{class:"empty",text:"Загружаю трениро
     if(first){first=false;const t=todayISO();const keys=Object.keys(o).sort();sel=o[t]?t:(keys.find(k=>k>=t)||keys[0]||t);const p=pd(sel);view=new Date(p.getFullYear(),p.getMonth(),1)}
     renderAll()},
     e=>{clearTimeout(timer);$("sub").textContent="Не удалось прочитать базу: "+(e?.message||e?.code||"ошибка")});
+})();
+
+/* ---------- экспорт JSON (побайтная выгрузка базы: файл + буфер обмена) ---------- */
+(function(){
+const b=document.getElementById("exportjson");if(!b)return;
+const COLS=["sessions", "meta"],PFX="run-calendar",label=b.textContent;
+const flash=t=>{b.textContent=t;setTimeout(()=>{b.textContent=label;b.disabled=false},4000)};
+b.addEventListener("click",async()=>{
+  b.disabled=true;b.textContent="Читаю базу…";
+  try{
+    const db=await window.claude?.use?.("db");if(!db)throw new Error("база недоступна");
+    const out={exportedAt:new Date().toISOString(),collections:{}};let n=0;
+    for(const c of COLS){
+      const col=db.collection(c);
+      const snap=await new Promise((res,rej)=>{
+        if(typeof col.get==="function"){col.get().then(res,rej);return}
+        let un=null;un=col.onSnapshot(s=>{try{un&&un()}catch(e){}res(s)},rej)});
+      const docs=snap.docs.map(d=>({id:d.id,data:d.data()})).sort((x,y)=>x.id<y.id?-1:x.id>y.id?1:0);
+      out.collections[c]=docs;n+=docs.length}
+    const txt=JSON.stringify(out,null,1);
+    const name=PFX+"-"+new Date().toISOString().slice(0,10)+".json";
+    let ok=[];
+    try{const dl=await window.claude?.use?.("downloads");if(dl){await dl.save({filename:name,data:txt});ok.push("файл")}}catch(e){}
+    try{await navigator.clipboard.writeText(txt);ok.push("буфер")}catch(e){}
+    flash(ok.length?"Готово: "+n+" док. ("+ok.join(" + ")+")":"Не удалось сохранить");
+  }catch(e){flash("Ошибка: "+(e&&(e.message||e.code)||e))}
+});
 })();
 </script>
 
