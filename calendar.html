@@ -1,0 +1,259 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Календарь бега и вело</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: шапка с ближайшей сессией → месячная сетка Пн–Вс → карточка выбранного дня с полосой шагов Garmin. Семья шрифтов как у силового дневника, акцент — ледниковый синий. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface-2:#e9edf1; --line:#d5dbe2;
+  --fg:#18212b; --muted:#5b6876; --accent:#1d5f8f; --accent-soft:#dbe8f3;
+  --warn:#a5561c; --warn-soft:#f6e7d9; --prop:#7a4fa3; --prop-soft:#ece3f5;
+  --z1:#8c97a3; --z2:#2f7fd8; --z3:#2e9e5b; --z4:#ec8a25; --z5:#de4a3b;
+  --font-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-num:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#10151a; --surface:#182029; --surface-2:#212b36; --line:#2e3a47;
+  --fg:#e4eaf0; --muted:#97a5b3; --accent:#7db7e6; --accent-soft:#1d3346;
+  --warn:#e6a36a; --warn-soft:#3b2a1c; --prop:#c3a3e6; --prop-soft:#33264a;
+  --z1:#7d8894; --z2:#4b95e8; --z3:#3fb26e; --z4:#f09a3e; --z5:#ec6152; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#10151a; --surface:#182029; --surface-2:#212b36; --line:#2e3a47;
+  --fg:#e4eaf0; --muted:#97a5b3; --accent:#7db7e6; --accent-soft:#1d3346;
+  --warn:#e6a36a; --warn-soft:#3b2a1c; --prop:#c3a3e6; --prop-soft:#33264a;
+  --z1:#7d8894; --z2:#4b95e8; --z3:#3fb26e; --z4:#f09a3e; --z5:#ec6152; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 48px}
+.wrap{max-width:920px;margin:0 auto}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:14px 10px;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+h1{font-size:20px;font-weight:700;margin:0 0 2px;text-wrap:balance}
+.sub{color:var(--muted);font-size:13px;margin:0}
+button{font:inherit;cursor:pointer;color:var(--fg)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+.nav{display:flex;align-items:center;gap:8px;margin:16px 0 10px;flex-wrap:wrap}
+.nav h2{font-size:16px;margin:0;min-width:150px;text-transform:capitalize}
+.nav .phase{color:var(--muted);font-size:13px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 11px;font-size:14px}
+.btn.icon{width:34px;padding:5px 0;text-align:center}
+.spacer{flex:1}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.dow{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 4px 2px}
+.cell{all:unset;box-sizing:border-box;min-height:78px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:5px 6px;display:flex;flex-direction:column;gap:4px;cursor:default;min-width:0}
+.cell.out{background:transparent;border-color:transparent}
+.cell.has{cursor:pointer}
+.cell.has:hover{border-color:var(--accent)}
+.cell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.cell.today .d{background:var(--accent);color:var(--bg);border-radius:5px;padding:0 4px}
+.cell.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.cell.deload{background:repeating-linear-gradient(135deg,var(--surface) 0 6px,var(--surface-2) 6px 8px)}
+.d{font-family:var(--font-num);font-size:12px;color:var(--muted);align-self:flex-start}
+.mini{display:flex;height:8px;border-radius:3px;overflow:hidden;gap:1px;background:var(--surface-2)}
+.mini span{min-width:2px}
+.ct{font-size:12px;line-height:1.25;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.cm{font-family:var(--font-num);font-size:11px;color:var(--muted)}
+.cell.trip{background:var(--accent-soft)}
+.prop-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--prop);margin-left:4px;vertical-align:middle}
+@media (max-width:560px){.ct{display:none}.cell{min-height:56px;padding:4px}.dow{padding:0 2px 2px}}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px;align-items:center}
+.sw{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:16px}
+.card .eyebrow{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.card h3{font-size:20px;margin:4px 0 10px;text-wrap:balance}
+.badge{font-size:11px;letter-spacing:.03em;text-transform:none;border-radius:999px;padding:1px 8px;border:1px solid var(--line);color:var(--fg)}
+.badge.plan{background:var(--accent-soft);border-color:transparent}
+.badge.proposal{background:var(--prop-soft);border-color:transparent;color:var(--prop)}
+.badge.deload{background:var(--surface-2)}
+.facts{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:12px}
+.fact .k{font-size:12px;color:var(--muted)}
+.fact .v{font-family:var(--font-num);font-size:18px;font-weight:600}
+.gbar-wrap{margin:6px 0 4px}
+.gcap{font-size:12px;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
+.gbar{position:relative;display:flex;height:34px;border-radius:6px;overflow:hidden;gap:2px;padding-top:0}
+.seg{min-width:4px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;white-space:nowrap;overflow:hidden;font-family:var(--font-num)}
+.seg.recover,.seg.warmup.z1,.seg.cooldown{color:#fff}
+.rep{display:flex;gap:2px;position:relative}
+.rep::before{content:attr(data-n);position:absolute;top:-1px;left:0;font-size:10px;line-height:1;background:var(--fg);color:var(--bg);padding:1px 4px;border-radius:0 0 4px 0;z-index:1;font-family:var(--font-num)}
+.ticks{display:flex;justify-content:space-between;font-family:var(--font-num);font-size:11px;color:var(--muted);margin-top:3px}
+.steps{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+.stbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+.steps th,.steps td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.steps tr:last-child td{border-bottom:none}
+.steps th{color:var(--muted);font-weight:500;background:var(--surface-2);white-space:nowrap}
+.steps td.n{font-family:var(--font-num);white-space:nowrap}
+.steps tr.rephead td{background:var(--surface-2);font-weight:600}
+.steps tr.inrep td:first-child{padding-left:20px}
+.steps .stype{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.steps .sub{font-size:12px;color:var(--muted)}
+.block{margin-top:14px}
+.block h4{font-size:13px;margin:0 0 4px;color:var(--muted);font-weight:600;letter-spacing:.03em;text-transform:uppercase}
+.cond{background:var(--accent-soft);border-radius:8px;padding:8px 12px;font-size:14px}
+.altbox{background:var(--warn-soft);border-left:3px solid var(--warn);border-radius:6px;padding:8px 12px;font-size:14px}
+ul.notes{margin:0;padding-left:18px;font-size:14px}
+ul.notes li{margin:2px 0}
+details summary{cursor:pointer;color:var(--accent);font-size:13px;font-weight:500;margin-top:8px}
+.empty{color:var(--muted);padding:20px;text-align:center;border:1px dashed var(--line);border-radius:var(--r);margin-top:16px}
+.next{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-top:8px;font-size:14px}
+.next a{color:var(--accent)}
+.linkbtn{all:unset;color:var(--accent);cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.linkbtn:focus-visible{outline:2px solid var(--accent)}
+@media (prefers-reduced-motion:no-preference){.seg{transition:filter .15s}.seg:hover{filter:brightness(1.1)}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Календарь бега и вело</h1>
+  <p class="sub" id="sub">Подключаюсь к базе…</p>
+  <div class="next" id="next"></div>
+</header>
+
+<div class="nav">
+  <button class="btn icon" id="prev" aria-label="Предыдущий месяц">‹</button>
+  <h2 id="mtitle">—</h2>
+  <button class="btn icon" id="nextm" aria-label="Следующий месяц">›</button>
+  <button class="btn" id="todayb">Сегодня</button>
+  <span class="spacer"></span>
+  <span class="phase" id="mphase"></span>
+</div>
+<div class="grid" id="dows"></div>
+<div class="grid" id="grid" style="margin-top:4px"></div>
+<div class="legend">
+  <span><i class="sw" style="background:var(--z1)"></i>Z1 разминка/отдых</span>
+  <span><i class="sw" style="background:var(--z2)"></i>Z2 лёгкий</span>
+  <span><i class="sw" style="background:var(--z3)"></i>Z3 темп</span>
+  <span><i class="sw" style="background:var(--z4)"></i>Z4 порог</span>
+  <span><i class="sw" style="background:var(--z5)"></i>Z5 страйды</span>
+  <span><i class="prop-dot" style="margin:0 4px 0 0"></i>предложение, ждёт согласия</span>
+</div>
+
+<div id="detail"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const DOW=["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const MON=["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const MONG=["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const SPORT={run:"Бег",bike:"Велотренажёр",hike:"Лес/рельеф",stairs:"Лестница вверх",trip:"Поход"};
+const KIND={quality:"Качественная",easy:"Лёгкая",long:"Длинный день",test:"Тест",checkpoint:"Контрольная",trip:"Поход"};
+let sessions={}, config={}, view=null, sel=null, loaded=false;
+
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function pd(s){const[y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function todayISO(){return iso(new Date())}
+function toISO(s){if(!s)return null;s=String(s);let m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);if(m)return s;m=s.match(/^(\d{2})[.\-](\d{2})[.\-](\d{4})$/);return m?m[3]+"-"+m[2]+"-"+m[1]:null}
+function keyOf(v,id){return toISO(v.sort)||toISO(id)||toISO(v.date)}
+function dmy(s){const k=toISO(s);return k?k.slice(8,10)+"."+k.slice(5,7)+"."+k.slice(0,4):(s||"—")}
+function el(t,a={},...k){const e=document.createElement(t);for(const[x,v]of Object.entries(a)){if(x==="text")e.textContent=v;else if(x==="style")e.setAttribute("style",v);else if(x.startsWith("on"))e.addEventListener(x.slice(2),v);else if(v!=null&&v!==false)e.setAttribute(x,v===true?"":v)}for(const c of k)if(c!=null)e.append(c);return e}
+function cap(){return config.easyCap??132}
+function rs(s){return typeof s==="string"?s.replaceAll("{cap}",cap()):s}
+function flat(steps,out=[]){for(const s of steps||[]){if(s.repeat){for(let i=0;i<s.repeat;i++)flat(s.steps,out)}else out.push(s)}return out}
+function tot(steps){return flat(steps).reduce((a,s)=>a+(s.sec||0),0)}
+function fmtDur(sec){if(sec<60)return sec+"″";const m=Math.round(sec/60);if(m<90||m%60)return m+"′";return (m/60)+" ч"}
+function fmtMin(m){if(m==null)return "—";if(m<120)return m+"′";const h=Math.floor(m/60),r=m%60;return h+" ч"+(r?" "+r+"′":"")}
+function zc(z){return "var(--z"+(z||2)+")"}
+function stype(s,sport){if(s.type==="warmup")return "Разминка";if(s.type==="cooldown")return "Заминка";if(s.type==="recover")return "Восстановление";if(s.type==="rest")return "Отдых";return sport==="bike"?"Интервал":"Бег"}
+function ceilingOf(x){const t=flat(x.steps).map(s=>rs(s.target||""));const m=t.map(s=>s.match(/ЧСС 100–(\d+)/)).filter(Boolean);
+  if(x.kind==="quality"||x.kind==="test"){const h=t.join(" ").match(/ЧСС ≤(\d+)/);return h?"≤"+h[1]:"RPE"}
+  return m.length?"≤"+Math.max(...m.map(r=>+r[1])):"—"}
+
+/* ---------- mini bar in cell ---------- */
+function miniBar(steps){const b=el("div",{class:"mini","aria-hidden":"true"});for(const s of flat(steps))b.append(el("span",{style:`flex:${s.sec} 0 0;background:${zc(s.z)}`}));return b}
+
+/* ---------- Garmin bar ---------- */
+function gbar(steps,sport){
+  const T=tot(steps);const bar=el("div",{class:"gbar",role:"img","aria-label":"Шаги тренировки по времени"});
+  const seg=s=>{const w=s.sec/T;const lbl=w>.09?fmtDur(s.sec):"";return el("div",{class:"seg "+s.type+" z"+s.z,style:`flex:${s.sec} 0 0;background:${zc(s.z)}`,title:stype(s,sport)+" · "+fmtDur(s.sec)+" · "+rs(s.target||"")},lbl)};
+  for(const s of steps||[]){if(s.repeat){const g=el("div",{class:"rep","data-n":"×"+s.repeat,style:`flex:${tot([s])} 0 0`});for(let i=0;i<s.repeat;i++)for(const c of s.steps)g.append(seg(c));bar.append(g)}else bar.append(seg(s))}
+  const wrap=el("div",{class:"gbar-wrap"},el("div",{class:"gcap"},el("span",{text:"Полоса для Garmin Connect — ширина = время"}),el("span",{class:"num",text:fmtMin(Math.round(T/60))})),bar);
+  const tk=el("div",{class:"ticks"});const step=T>5400?1800:T>2700?900:600;for(let t=0;t<=T;t+=step)tk.append(el("span",{text:Math.round(t/60)+"′"}));wrap.append(tk);
+  return wrap}
+
+function stepRows(steps,sport){
+  const tb=el("tbody");let n=0;
+  const row=(s,inrep)=>{n++;tb.append(el("tr",{class:inrep?"inrep":""},
+    el("td",{class:"n",text:String(n)}),
+    el("td",{},el("span",{class:"stype"},el("i",{class:"sw",style:"background:"+zc(s.z)}),stype(s,sport)),s.label&&s.label!==stype(s,sport)?el("div",{class:"sub",text:s.label}):null),
+    el("td",{class:"n",text:fmtDur(s.sec)}),
+    el("td",{},rs(s.target||"—"),s.note?el("div",{class:"sub",text:rs(s.note)}):null)))};
+  for(const s of steps||[]){if(s.repeat){tb.append(el("tr",{class:"rephead"},el("td",{text:""}),el("td",{colspan:"3",text:"Повтор × "+s.repeat+" (шаги ниже)"})));for(const c of s.steps)row(c,true)}else row(s,false)}
+  return el("div",{class:"stbl"},el("table",{class:"steps"},el("thead",{},el("tr",{},el("th",{text:"№"}),el("th",{text:"Тип шага"}),el("th",{text:"Время"}),el("th",{text:"Цель"}))),tb))}
+
+/* ---------- detail ---------- */
+function dateLong(s){const d=pd(s);return DOW[(d.getDay()+6)%7]+", "+d.getDate()+" "+MONG[d.getMonth()]+" "+d.getFullYear()}
+function renderDetail(){
+  const box=$("detail");box.replaceChildren();
+  if(!loaded)return;
+  const x=sessions[sel];
+  if(!x){box.append(el("div",{class:"empty",text:sel?dateLong(sel)+": тренировки бега или вело в плане нет. Силовая — в силовом дневнике.":"Выберите день с тренировкой."}));return}
+  const eb=el("div",{class:"eyebrow"},el("span",{text:dateLong(sel)}),el("span",{text:"· "+(x.phase||"")+(x.week?", неделя "+x.week:"")}));
+  eb.append(el("span",{class:"badge "+(x.src==="proposal"?"proposal":"plan"),text:x.src==="proposal"?"предложение":"из плана"}));
+  if(x.deload)eb.append(el("span",{class:"badge deload",text:"разгрузка"}));
+  const c=el("div",{class:"card"},eb,el("h3",{text:rs(x.title)}));
+  if(x.kind!=="trip"){
+    c.append(el("div",{class:"facts"},
+      el("div",{class:"fact"},el("div",{class:"k",text:"Время"}),el("div",{class:"v",text:fmtMin(x.dur)})),
+      el("div",{class:"fact"},el("div",{class:"k",text:"Пульс"}),el("div",{class:"v",text:ceilingOf(x)})),
+      el("div",{class:"fact"},el("div",{class:"k",text:"Вид"}),el("div",{class:"v",style:"font-family:var(--font-body);font-size:16px",text:SPORT[x.sport]||x.sport})),
+      el("div",{class:"fact"},el("div",{class:"k",text:"Тип"}),el("div",{class:"v",style:"font-family:var(--font-body);font-size:16px",text:KIND[x.kind]||x.kind}))));
+    if(x.steps?.length){c.append(gbar(x.steps,x.sport),stepRows(x.steps,x.sport))}
+  }
+  if(x.cond)c.append(el("div",{class:"block"},el("h4",{text:"Условие утром"}),el("div",{class:"cond",text:rs(x.cond)})));
+  if(x.alt){const b=el("div",{class:"block"},el("h4",{text:"Иначе / запасной вариант"}),el("div",{class:"altbox",text:rs(x.alt)}));
+    if(x.altSteps?.length){const sp=x.alt.startsWith("Вело")?"bike":"run";const d=el("details",{},el("summary",{text:"Шаги запасного варианта · "+fmtMin(x.altDur)}));d.append(gbar(x.altSteps,sp),stepRows(x.altSteps,sp));b.append(d)}
+    c.append(b)}
+  if(x.notes?.length){const u=el("ul",{class:"notes"});for(const n of x.notes)u.append(el("li",{text:rs(n)}));c.append(el("div",{class:"block"},el("h4",{text:"Заметки"}),u))}
+  box.append(c)}
+
+/* ---------- grid ---------- */
+function renderGrid(){
+  const y=view.getFullYear(),m=view.getMonth();$("mtitle").textContent=MON[m]+" "+y;
+  const first=new Date(y,m,1);const off=(first.getDay()+6)%7;const days=new Date(y,m+1,0).getDate();
+  const g=$("grid");g.replaceChildren();const t=todayISO();const phases=new Set();
+  for(let i=0;i<off;i++)g.append(el("div",{class:"cell out","aria-hidden":"true"}));
+  for(let d=1;d<=days;d++){const k=iso(new Date(y,m,d));const x=sessions[k];
+    let cls="cell";if(x)cls+=" has";if(x?.deload)cls+=" deload";if(x?.kind==="trip")cls+=" trip";if(k===t)cls+=" today";if(k===sel)cls+=" sel";
+    const c=el(x?"button":"div",{class:cls,"aria-label":x?dmy(k)+": "+rs(x.title):null,"aria-pressed":x?String(k===sel):null},el("span",{class:"d",text:String(d)}));
+    if(x){phases.add(x.phase);if(x.steps?.length)c.append(miniBar(x.steps));
+      const cm=el("span",{class:"cm",text:x.kind==="trip"?"поход":fmtMin(x.dur)});if(x.src==="proposal")cm.append(el("i",{class:"prop-dot",title:"предложение"}));
+      c.append(cm,el("span",{class:"ct",text:rs(x.title)}));c.addEventListener("click",()=>{sel=k;renderGrid();renderDetail();try{$("detail").scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth",block:"start"})}catch(e){}})}
+    g.append(c)}
+  $("mphase").textContent=[...phases].filter(Boolean).join(" → ")}
+
+function renderHeader(){
+  const keys=Object.keys(sessions).sort();const t=todayISO();
+  const upd=Object.values(sessions).map(s=>toISO(s.updatedAt)||"").sort().pop();
+  $("sub").textContent=keys.length?`${keys.length} сессий · обновлено ${upd?dmy(upd):"—"} · лёгкий потолок сейчас ≤${cap()}${config.easyCapNote?" ("+config.easyCapNote+")":""}`:"Сессий пока нет — их добавляет Claude из плана.";
+  const nx=$("next");nx.replaceChildren();const k=keys.find(d=>d>=t);
+  if(k){const x=sessions[k];nx.append(el("span",{text:(k===t?"Сегодня":"Ближайшая")+": "}),el("button",{class:"linkbtn",text:dateLong(k)+" — "+rs(x.title)+(x.dur?" · "+fmtMin(x.dur):""),onclick:()=>{sel=k;view=new Date(pd(k).getFullYear(),pd(k).getMonth(),1);renderGrid();renderDetail()}}))}}
+
+function renderAll(){renderHeader();renderGrid();renderDetail()}
+
+/* ---------- init ---------- */
+for(const d of DOW)$("dows").append(el("div",{class:"dow",text:d}));
+view=new Date(new Date().getFullYear(),new Date().getMonth(),1);
+$("prev").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);renderGrid()};
+$("nextm").onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);renderGrid()};
+$("todayb").onclick=()=>{view=new Date(new Date().getFullYear(),new Date().getMonth(),1);sel=todayISO();renderGrid();renderDetail()};
+renderGrid();
+$("detail").append(el("div",{class:"empty",text:"Загружаю тренировки…"}));
+
+(async()=>{
+  const timer=setTimeout(()=>{if(!loaded)$("sub").textContent="База не ответила за 10 с — откройте страницу заново."},10000);
+  let db=null;try{db=await window.claude?.use?.("db")}catch(e){db=null}
+  if(!db){clearTimeout(timer);$("sub").textContent="База недоступна в этом окне — откройте страницу в claude.ai, войдя в аккаунт.";$("detail").replaceChildren();return}
+  let first=true;
+  db.collection("meta").doc("config").onSnapshot(s=>{config=s.exists?s.data():{};if(loaded)renderAll()},()=>{});
+  db.collection("sessions").onSnapshot(snap=>{
+    clearTimeout(timer);const o={};for(const d of snap.docs){const v=d.data();const k=v&&keyOf(v,d.id);if(k)o[k]=v}sessions=o;loaded=true;
+    if(first){first=false;const t=todayISO();const keys=Object.keys(o).sort();sel=o[t]?t:(keys.find(k=>k>=t)||keys[0]||t);const p=pd(sel);view=new Date(p.getFullYear(),p.getMonth(),1)}
+    renderAll()},
+    e=>{clearTimeout(timer);$("sub").textContent="Не удалось прочитать базу: "+(e?.message||e?.code||"ошибка")});
+})();
+</script>
+
+</body></html>

@@ -1,0 +1,27 @@
+{
+ "data": {
+  "date": "11.07.2027",
+  "dow": "Вс",
+  "dur": 105,
+  "kind": "long",
+  "phase": "Мост",
+  "sort": "2027-07-11",
+  "sport": "run",
+  "src": "plan",
+  "steps": [
+   {
+    "label": "Лес",
+    "sec": 6300,
+    "target": "ЧСС 100–132",
+    "type": "active",
+    "z": 2
+   }
+  ],
+  "title": "90–120′ спокойно",
+  "updatedAt": "03.11.2026",
+  "week": null
+ },
+ "id": "11-07-2027",
+ "updatedAt": "2026-11-03T11:25:18.18321Z",
+ "version": 1
+}
