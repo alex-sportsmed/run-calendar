@@ -44,3 +44,20 @@
 
 ## Безопасность
 Репозиторий приватный. Ключи, токены, пароли не хранить и не выводить.
+
+## В терминальном Claude Code
+Инструментов `publish_files`, `get_artifact`, `read_file`, `db_*` здесь нет; соответствие:
+
+| Выше в документе | Терминальный Claude Code |
+|---|---|
+| `get_artifact(slug)` | `Artifact` `action:"read"`, `url` (версию сверять с `.published-version`) |
+| `read_file(slug, paths=["index.html"])` | `Artifact` `read` с `path:"index.html"` и `out_dir` (файл сохраняется побайтно) → скопировать в `calendar.html` |
+| `publish_files(slug, base_version, files)` | `Artifact` `publish`, `url`, `file_path:"calendar.html"` (или `edits`); конфликт версий сервер ловит сам (читать живую версию → слить → повторить); `guide(topic="pages")` не нужен |
+| `db_list` | `ArtifactData` `list`, `collection:"sessions"` / `"meta"`, `query.limit` ≤1000, `query.cursor` ← `next_cursor` |
+| `db_get` | `ArtifactData` `get`, `collection`, `doc_id` |
+| `db_write` | `ArtifactData` `set` (замена) / `update` (слияние) с `if_version` = `version` прочитанного документа; несколько документов — `batch` (≤50, атомарно) |
+
+- `url` для `ArtifactData` и `Artifact` — https://claude.ai/artifact/BhXZ3CHpmMG9RLjx6G6Ujc (slug-UUID не нужен).
+- `list`/`get` с `out_dir` пишут каждый документ в `<out_dir>/<collection>/<doc_id>.json` побайтно (без копирования моделью); `doc_id` сессий — `ДД-ММ-ГГГГ`, не `ГГГГ-ММ-ДД`, и порядок выдачи не по датам. Формат файла — `{id, data, version, updatedAt}`, под `jsonl_to_data.py` нужна раскладка по `sort`.
+- Проверено 24.11.2026 (только чтение): `list` для `sessions` (есть `next_cursor`) и `meta`, `get` для `meta/config` работают. `set`/`update`/`batch` по схеме есть, на практике не проверялись (в базу не писали).
+- Запись и `delete` — только по согласованию с Alex (см. «Схему базы»); документы `sessions/…` не удалять.
